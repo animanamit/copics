@@ -22,7 +22,8 @@ import {
   AnalysisLoading,
   AnalysisError,
 } from "@/components/analysis-results";
-import { ArrowLeft, Trash2, Pencil, Check, X, RefreshCw, Loader2 } from "lucide-react";
+import { SimplifyColorsDialog } from "@/components/simplify-colors-dialog";
+import { ArrowLeft, Trash2, Pencil, Check, X, RefreshCw, Loader2, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import type { AnalysisResult, AnalysisStatus } from "@/lib/types";
 
@@ -50,6 +51,7 @@ interface RerunOptions {
   simplifiedAnalysis: boolean;
   skillLevel: "beginner" | "intermediate" | "advanced" | "auto";
   customInstructions: string;
+  maxColors?: number;
 }
 
 const defaultRerunOptions: RerunOptions = {
@@ -57,6 +59,7 @@ const defaultRerunOptions: RerunOptions = {
   simplifiedAnalysis: false,
   skillLevel: "auto",
   customInstructions: "",
+  maxColors: undefined,
 };
 
 type AnalysisStep = "preparing" | "analyzing" | "matching" | "tips" | "done";
@@ -94,6 +97,7 @@ export default function AnalyzePage() {
   const [rerunStep, setRerunStep] = useState<AnalysisStep | null>(null);
   const [rerunProgress, setRerunProgress] = useState(0);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [showSimplifyDialog, setShowSimplifyDialog] = useState(false);
 
   // Update step based on progress
   useEffect(() => {
@@ -257,6 +261,76 @@ export default function AnalyzePage() {
     setShowRerunConfirmDialog(true);
   };
 
+  const handleSimplifyColors = async (maxColors: number) => {
+    setIsRerunning(true);
+    setRerunProgress(0);
+    setRerunStep("preparing");
+
+    // Start progress simulation
+    progressIntervalRef.current = setInterval(() => {
+      setRerunProgress((p) => {
+        if (p < 15) return p + 3;
+        if (p < 50) return p + 2;
+        if (p < 80) return p + 1;
+        if (p < 95) return p + 0.5;
+        return p;
+      });
+    }, 200);
+
+    toast.loading("simplifying palette...", { id: "simplify" });
+
+    try {
+      const response = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          analysisId,
+          options: {
+            ...rerunOptions,
+            customInstructions: `limit the color palette to a maximum of ${maxColors} colors. prioritize the most impactful and commonly-used colors, and merge or remove less essential colors. maintain visual harmony and readability.`,
+          },
+          rerun: true,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "failed to simplify colors");
+      }
+
+      // Complete progress
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+      setRerunProgress(100);
+      setRerunStep("done");
+
+      setAnalysis((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: "completed" as AnalysisStatus,
+              result: data.result,
+            }
+          : prev
+      );
+
+      toast.success(`palette simplified to ${maxColors} colors!`, { id: "simplify" });
+    } catch (err) {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+      toast.error(err instanceof Error ? err.message : "failed to simplify colors", { id: "simplify" });
+    } finally {
+      setIsRerunning(false);
+      setRerunProgress(0);
+      setRerunStep(null);
+    }
+  };
+
   const confirmRerun = async () => {
     setShowRerunConfirmDialog(false);
     setIsRerunning(true);
@@ -277,13 +351,23 @@ export default function AnalyzePage() {
     toast.loading("re-analyzing your artwork...", { id: "rerun" });
 
     try {
+      // Build options with maxColors constraint if specified
+      const optionsToSend = { ...rerunOptions };
+      if (rerunOptions.maxColors) {
+        optionsToSend.customInstructions = 
+          `${optionsToSend.customInstructions ? optionsToSend.customInstructions + '\n\n' : ''}` +
+          `Limit the color palette to a maximum of ${rerunOptions.maxColors} colors. ` +
+          `Prioritize the most impactful and commonly-used colors, and merge or remove less essential colors. ` +
+          `Maintain visual harmony and readability.`;
+      }
+
       const response = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           analysisId,
           rerun: true,
-          options: rerunOptions,
+          options: optionsToSend,
         }),
       });
 
@@ -349,16 +433,29 @@ export default function AnalyzePage() {
           </Link>
 
           {analysis && !showRerunForm && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
-              onClick={handleDeleteClick}
-              disabled={isDeleting}
-            >
-              <Trash2 className="w-4 h-4" />
-              delete
-            </Button>
+            <div className="flex gap-2">
+              {analysis.result && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => setShowSimplifyDialog(true)}
+                >
+                  <Wand2 className="w-4 h-4" />
+                  simplify colors
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={handleDeleteClick}
+                disabled={isDeleting}
+              >
+                <Trash2 className="w-4 h-4" />
+                delete
+              </Button>
+            </div>
           )}
         </div>
 
@@ -472,6 +569,34 @@ export default function AnalyzePage() {
                       </select>
                       <p className="text-xs text-muted-foreground">
                         tips will be tailored to your experience
+                      </p>
+                    </div>
+
+                    {/* Max Colors Constraint */}
+                    <div className="space-y-2">
+                      <Label htmlFor="max-colors">
+                        max colors <span className="text-muted-foreground font-normal">(optional)</span>
+                      </Label>
+                      <select
+                        id="max-colors"
+                        value={rerunOptions.maxColors ?? ""}
+                        onChange={(e) =>
+                          setRerunOptions((prev) => ({
+                            ...prev,
+                            maxColors: e.target.value ? parseInt(e.target.value) : undefined,
+                          }))
+                        }
+                        className="w-full h-10 rounded-lg border border-border/50 bg-transparent px-3 text-sm focus:border-ring focus:ring-ring/50 focus:ring-[3px] outline-none"
+                      >
+                        <option value="">no limit</option>
+                        <option value="4">4 colors (minimal)</option>
+                        <option value="5">5 colors</option>
+                        <option value="6">6 colors (balanced)</option>
+                        <option value="7">7 colors</option>
+                        <option value="8">8 colors (detailed)</option>
+                      </select>
+                      <p className="text-xs text-muted-foreground">
+                        limit palette to specified colors only
                       </p>
                     </div>
 
@@ -666,6 +791,17 @@ export default function AnalyzePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Simplify Colors Dialog */}
+      {analysis?.result && (
+        <SimplifyColorsDialog
+          isOpen={showSimplifyDialog}
+          onOpenChange={setShowSimplifyDialog}
+          currentColorCount={analysis.result.coloringPlan?.materialsList.length || 0}
+          onSimplify={handleSimplifyColors}
+          isLoading={isRerunning}
+        />
+      )}
     </div>
   );
 }

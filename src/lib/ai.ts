@@ -40,12 +40,16 @@ copic sketch color families and code formats:
 - Special: 0 (Colorless Blender), 100 (Black)
 - Fluorescent: FV (Fluorescent Dull Violet), FRV1 (Fluorescent Pink), FYR1 (Fluorescent Orange), FY1 (Fluorescent Yellow Orange), FYG1 (Fluorescent Yellow Green), FYG2 (Fluorescent Dull Yellow Green), FB2 (Fluorescent Dull Blue)
 
-CRITICAL COPIC BLENDING TECHNIQUE:
-- with copic markers, you MUST work DARK TO LIGHT for blending
-- lay down the DARKEST color first, then add MID-TONES, then finish with the LIGHTEST color
-- this is because alcohol ink blends by pushing lighter ink into darker areas
-- when creating a coloring plan, steps must follow this dark-to-light order within each region
-- example: for skin, start with shadow colors (E35/E25), then mid-tone (E21/E13), then highlights (E00/E000)
+CRITICAL COPIC BLENDING TECHNIQUE - MANDATORY:
+- ALWAYS work DARK TO LIGHT - this is non-negotiable for alcohol marker blending
+- EVERY region MUST start with the DARKEST color first (shadows, dark tones)
+- THEN layer MID-TONE colors while dark is still wet
+- FINALLY add LIGHTEST colors (highlights) last
+- NEVER start with light colors - this is the biggest mistake beginners make
+- alcohol ink blends by pushing lighter ink INTO darker areas - light colors go ON TOP of dark colors
+- if you recommend starting anywhere other than the darkest color, you are giving BAD advice
+- example CORRECT order for skin: step 1 = E35 (darkest shadow), step 2 = E21 (mid-tone while wet), step 3 = E00 (lightest highlight)
+- VERIFY every single step in the coloring plan follows dark-to-light within its region
 
 important guidelines:
 - ONLY use codes from the Copic Sketch line listed above
@@ -153,17 +157,19 @@ also provide:
 - 3-5 overall tips SPECIFIC TO THIS IMAGE - these must reference the actual content, colors, and challenges unique to this particular artwork
 - a difficulty level assessment (beginner/intermediate/advanced) based on this specific image's complexity
 - a complete COLORING PLAN (game plan) - a step-by-step timeline for coloring the artwork:
-  - CRITICAL BLENDING ORDER: within each region, ALWAYS work DARK TO LIGHT
-    * start with the DARKEST shadow color first
-    * then apply MID-TONE colors while the dark is still wet (to blend)
-    * finish with the LIGHTEST highlight colors
-    * this is how copic alcohol markers work - lighter ink pushes into and blends with darker ink
+  - MANDATORY DARK-TO-LIGHT ORDER: Every single region MUST follow this pattern exactly:
+    * FIRST: apply the DARKEST shadow/base color
+    * SECOND: apply MID-TONE colors while dark is STILL WET (same region, same moment in time)
+    * THIRD: apply LIGHTEST highlight colors LAST
+    * NEVER reverse this order - starting light first will ruin the blending
+    * this is how alcohol markers physically work - light pushes into dark, not the reverse
   - IMPORTANT: assume the user is LEFT-HANDED, so plan the coloring order from RIGHT TO LEFT across the image to avoid smudging
   - account for drying times between adjacent regions
   - indicate when to blend colors while still wet vs. waiting for layers to dry
-  - group related steps logically (e.g., all skin tones together while they can blend)
+  - group related steps logically (e.g., all skin tones together while they can blend, all at once with dark-to-light order)
   - include rest/drying breaks where appropriate
   - provide an estimated total time for the complete coloring
+  - DOUBLE-CHECK: before finalizing, verify that EVERY step in EVERY region follows dark-to-light order
 
 respond with a JSON object in this exact format:
 {

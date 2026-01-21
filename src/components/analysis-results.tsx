@@ -3,6 +3,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CopicColorList } from "@/components/copic-color-card";
 import { BlendingTips, OverallTips } from "@/components/blending-tips";
+import { ColorPalette } from "@/components/color-palette";
+import { ColoringPlanStepper } from "@/components/coloring-plan-stepper";
 import { ListOrdered, Clock, Palette, Timer } from "lucide-react";
 import type { AnalysisResult } from "@/lib/types";
 
@@ -55,6 +57,9 @@ export function AnalysisResults({
       {/* Overall tips */}
       <OverallTips tips={result.overallTips} difficultyLevel={result.difficultyLevel} />
 
+      {/* Color Palette Section */}
+      <ColorPalette result={result} />
+
       {/* Regions */}
       <div className="space-y-6">
         <h2 className="text-lg font-medium">color regions</h2>
@@ -79,119 +84,13 @@ export function AnalysisResults({
         </div>
       </div>
 
-      {/* Coloring Plan */}
+      {/* Coloring Plan - Interactive Stepper */}
       {result.coloringPlan && (
-        <div className="space-y-3">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-medium flex items-center gap-2">
-              <ListOrdered className="w-5 h-5 text-primary" />
-              coloring game plan
-            </h2>
-            <div className="flex items-center gap-3 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5" />
-                {result.coloringPlan.estimatedTime}
-              </span>
-              <span className="flex items-center gap-1">
-                <Palette className="w-3.5 h-3.5" />
-                {result.coloringPlan.materialsList.length} colors
-              </span>
-            </div>
-          </div>
-
-          {/* Materials List - Compact */}
-          <div className="bg-pastel-mint/20 rounded-xl px-3 py-2.5">
-            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-2">
-              materials needed
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {result.coloringPlan.materialsList.map((code, i) => {
-                const hex = getColorHex(code, result.regions);
-                return (
-                  <span
-                    key={i}
-                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-mono font-medium"
-                    style={{
-                      backgroundColor: hex ? `${hex}25` : undefined,
-                      color: hex ? getContrastColor(hex) : undefined,
-                      border: `1px solid ${hex || '#e5e5e5'}40`,
-                    }}
-                  >
-                    <span
-                      className="w-2.5 h-2.5 rounded-sm flex-shrink-0"
-                      style={{ backgroundColor: hex || '#888' }}
-                    />
-                    {code}
-                  </span>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Steps - Compact */}
-          <div className="space-y-2">
-            {result.coloringPlan.steps.map((step, idx) => (
-              <div
-                key={idx}
-                className={`rounded-xl border-l-[3px] bg-card px-3 py-2.5 ${
-                  step.waitAfter
-                    ? "border-l-amber-400"
-                    : "border-l-primary/60"
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  {/* Step number */}
-                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary">
-                    {step.stepNumber}
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    {/* Action + Region + Colors in one row */}
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="font-medium text-sm">{step.action}</span>
-                        <span className="text-muted-foreground text-sm">—</span>
-                        <span className="text-muted-foreground text-sm truncate">{step.region}</span>
-                      </div>
-                      {/* Color badges */}
-                      <div className="flex gap-1 flex-shrink-0">
-                        {step.colors.map((code, i) => {
-                          const hex = getColorHex(code, result.regions);
-                          return (
-                            <span
-                              key={i}
-                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-mono font-medium"
-                              style={{
-                                backgroundColor: hex || '#f5f5f5',
-                                color: hex ? getContrastColor(hex) : '#333',
-                                boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.1)',
-                              }}
-                            >
-                              {code}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Notes */}
-                    <p className="text-xs text-muted-foreground mt-1">{step.notes}</p>
-
-                    {/* Wait indicator */}
-                    {step.waitAfter && (
-                      <div className="flex items-center gap-1 text-[11px] text-amber-600 mt-1.5">
-                        <Timer className="w-3 h-3" />
-                        {step.waitAfter}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <ColoringPlanStepper
+          imageUrl={imageUrl}
+          imageName={imageName}
+          result={result}
+        />
       )}
     </div>
   );

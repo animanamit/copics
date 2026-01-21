@@ -194,15 +194,14 @@ export async function POST(request: NextRequest) {
       );
     }
     } catch (error) {
-    console.error("analyze error:", error);
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    return NextResponse.json(
-      { 
-        error: "Failed to process analysis",
-        details: errorMessage,
-        analysisId
-      },
-      { status: 500 }
-    );
+      console.error("analyze error:", error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return NextResponse.json(
+        { 
+          error: "Failed to process analysis",
+          details: errorMessage
+        },
+        { status: 500 }
+      );
     }
     }
