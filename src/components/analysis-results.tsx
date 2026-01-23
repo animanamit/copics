@@ -5,6 +5,7 @@ import { CopicColorList } from "@/components/copic-color-card";
 import { BlendingTips, OverallTips } from "@/components/blending-tips";
 import { ColorPalette } from "@/components/color-palette";
 import { ColoringPlanStepper } from "@/components/coloring-plan-stepper";
+import { ShoppingListDisplay } from "@/components/analysis/shopping-list-display";
 import { ListOrdered, Clock, Palette, Timer } from "lucide-react";
 import type { AnalysisResult } from "@/lib/types";
 
@@ -36,13 +37,37 @@ interface AnalysisResultsProps {
   imageUrl: string;
   imageName: string;
   result: AnalysisResult;
+  options?: {
+    shoppingList?: boolean;
+    colorsOnly?: boolean;
+  };
 }
 
 export function AnalysisResults({
   imageUrl,
   imageName,
   result,
+  options,
 }: AnalysisResultsProps) {
+  // If this was a shopping list only analysis, show only the shopping list
+  if (options?.shoppingList && result.shoppingList) {
+    return (
+      <div className="space-y-8">
+        {/* Image display */}
+        <div className="rounded-3xl overflow-hidden bg-pastel-lavender/10 p-2">
+          <img
+            src={imageUrl}
+            alt={imageName}
+            className="w-full h-auto max-h-[400px] object-contain rounded-2xl"
+          />
+        </div>
+
+        {/* Shopping List */}
+        <ShoppingListDisplay shoppingList={result.shoppingList} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       {/* Image display */}

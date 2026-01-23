@@ -105,128 +105,177 @@ export interface AnalysisOptions {
   simplifiedAnalysis?: boolean;
   skillLevel?: "beginner" | "intermediate" | "advanced" | "auto";
   customInstructions?: string;
+  colorsOnly?: boolean;
+  shoppingList?: boolean;
 }
 
 // Build a dynamic user prompt based on options
 export function buildUserPrompt(options?: AnalysisOptions): string {
   const parts: string[] = [];
 
-  parts.push(`please analyze this artwork image and provide copic sketch marker color recommendations.
+  // Check if this is shopping list only mode
+  const isShoppingListOnly = options?.shoppingList && !options?.colorsOnly;
+
+  if (isShoppingListOnly) {
+    // Shopping list only - skip regions/tips analysis
+    parts.push(`please analyze this artwork image and identify all the distinct color areas and color families needed.
+
+IMPORTANT: only recommend colors from the Copic Sketch marker line (358 colors total). do not recommend colors from other copic lines.
+
+MODE: shopping list ONLY. the user ONLY wants a shopping list and nothing else. do NOT provide regions, overall tips, coloring plan, or difficulty level. only provide the shopping list object with conversationalIntro, bySection (organized by color family and section), and moneyTips.
+
+be conversational and recommend buying extra colors beyond the minimum needed for confidence and comfort in blending. suggest skipping intermediate shades when possible (e.g., go from Grey 02 to 04, skip 03) to save money while still having good blending capability.`);
+  } else {
+    parts.push(`please analyze this artwork image and provide copic sketch marker color recommendations.
 
 IMPORTANT: only recommend colors from the Copic Sketch marker line (358 colors total). do not recommend colors from other copic lines.`);
 
-  // Add option-specific instructions
-  if (options?.ignoreBackground) {
-    parts.push(`
+    // Add option-specific instructions
+    if (options?.ignoreBackground) {
+      parts.push(`
 FOCUS: ignore the background entirely. only analyze the foreground elements, characters, and main subjects of the artwork.`);
-  }
+    }
 
-  if (options?.simplifiedAnalysis) {
-    parts.push(`
+    if (options?.simplifiedAnalysis) {
+      parts.push(`
 DETAIL LEVEL: provide a simplified analysis with fewer regions (3-4 main regions maximum). focus on the most important color areas only.`);
-  } else {
-    parts.push(`
+    } else {
+      parts.push(`
 DETAIL LEVEL: provide a detailed analysis, identifying all distinct color regions in the artwork.`);
-  }
+    }
 
-  if (options?.skillLevel && options.skillLevel !== "auto") {
-    const skillInstructions = {
-      beginner: `
+    if (options?.skillLevel && options.skillLevel !== "auto") {
+      const skillInstructions = {
+        beginner: `
 SKILL LEVEL: the user is a beginner. provide simpler blending techniques, recommend easier-to-use colors, and explain tips in more detail. avoid complex layering techniques.`,
-      intermediate: `
+        intermediate: `
 SKILL LEVEL: the user has intermediate experience. include standard blending techniques and some advanced tips where appropriate.`,
-      advanced: `
+        advanced: `
 SKILL LEVEL: the user is advanced. feel free to recommend complex blending techniques, subtle color variations, and professional-level tips.`,
-    };
-    parts.push(skillInstructions[options.skillLevel]);
+      };
+      parts.push(skillInstructions[options.skillLevel]);
+    }
+
+    if (options?.customInstructions?.trim()) {
+      parts.push(`
+USER INSTRUCTIONS: ${options.customInstructions.trim()}`);
+    }
+
+    // If colorsOnly mode, skip the coloring plan instructions
+    if (options?.colorsOnly) {
+      parts.push(`
+MODE: colors only. the user only wants to know which specific copic sketch colors to use for each region. do NOT provide detailed blending instructions, timeline, or step-by-step coloring plan. focus on the color recommendations only.`);
+    }
+
+    parts.push(`
+
+  for each distinct region in the image, recommend:
+  - a primary copic sketch marker color
+  - 2-3 secondary colors for shading/highlighting
+  - specific blending tips for that area
+  
+  also provide:
+  - 3-5 overall tips SPECIFIC TO THIS IMAGE - these must reference the actual content, colors, and challenges unique to this particular artwork
+  - a difficulty level assessment (beginner/intermediate/advanced) based on this specific image's complexity`);
   }
 
-  if (options?.customInstructions?.trim()) {
-    parts.push(`
-USER INSTRUCTIONS: ${options.customInstructions.trim()}`);
+  if (!options?.colorsOnly) {
+    parts.push(` - a complete COLORING PLAN (game plan) - a step-by-step timeline for coloring the artwork:
+   - MANDATORY DARK-TO-LIGHT ORDER: Every single region MUST follow this pattern exactly:
+     * FIRST: apply the DARKEST shadow/base color
+     * SECOND: apply MID-TONE colors while dark is STILL WET (same region, same moment in time)
+     * THIRD: apply LIGHTEST highlight colors LAST
+     * NEVER reverse this order - starting light first will ruin the blending
+     * this is how alcohol markers physically work - light pushes into dark, not the reverse
+   - IMPORTANT: assume the user is LEFT-HANDED, so plan the coloring order from RIGHT TO LEFT across the image to avoid smudging
+   - account for drying times between adjacent regions
+   - indicate when to blend colors while still wet vs. waiting for layers to dry
+   - group related steps logically (e.g., all skin tones together while they can blend, all at once with dark-to-light order)
+   - include rest/drying breaks where appropriate
+   - provide an estimated total time for the complete coloring
+   - DOUBLE-CHECK: before finalizing, verify that EVERY step in EVERY region follows dark-to-light order`);
   }
 
   parts.push(`
-
-for each distinct region in the image, recommend:
-- a primary copic sketch marker color
-- 2-3 secondary colors for shading/highlighting
-- specific blending tips for that area
-
-also provide:
-- 3-5 overall tips SPECIFIC TO THIS IMAGE - these must reference the actual content, colors, and challenges unique to this particular artwork
-- a difficulty level assessment (beginner/intermediate/advanced) based on this specific image's complexity
-- a complete COLORING PLAN (game plan) - a step-by-step timeline for coloring the artwork:
-  - MANDATORY DARK-TO-LIGHT ORDER: Every single region MUST follow this pattern exactly:
-    * FIRST: apply the DARKEST shadow/base color
-    * SECOND: apply MID-TONE colors while dark is STILL WET (same region, same moment in time)
-    * THIRD: apply LIGHTEST highlight colors LAST
-    * NEVER reverse this order - starting light first will ruin the blending
-    * this is how alcohol markers physically work - light pushes into dark, not the reverse
-  - IMPORTANT: assume the user is LEFT-HANDED, so plan the coloring order from RIGHT TO LEFT across the image to avoid smudging
-  - account for drying times between adjacent regions
-  - indicate when to blend colors while still wet vs. waiting for layers to dry
-  - group related steps logically (e.g., all skin tones together while they can blend, all at once with dark-to-light order)
-  - include rest/drying breaks where appropriate
-  - provide an estimated total time for the complete coloring
-  - DOUBLE-CHECK: before finalizing, verify that EVERY step in EVERY region follows dark-to-light order
-
-respond with a JSON object in this exact format:
-{
-  "regions": [
-    {
-      "name": "region name (e.g., 'sky background', 'character's hair')",
-      "description": "brief description of what this region contains",
-      "primaryColor": {
-        "code": "copic sketch code like BV23",
-        "name": "official copic name like Grayish Lavender",
-        "hexPreview": "#hex color approximation",
-        "family": "color family like Blue Violet"
-      },
-      "secondaryColors": [
-        { "code": "...", "name": "...", "hexPreview": "...", "family": "..." }
+  
+  respond with a JSON object in this exact format:
+  {
+   "regions": [
+     {
+       "name": "region name (e.g., 'sky background', 'character's hair')",
+       "description": "brief description of what this region contains",
+       "primaryColor": {
+         "code": "copic sketch code like BV23",
+         "name": "official copic name like Grayish Lavender",
+         "hexPreview": "#hex color approximation",
+         "family": "color family like Blue Violet"
+       },
+       "secondaryColors": [
+         { "code": "...", "name": "...", "hexPreview": "...", "family": "..." }
+       ],
+       "blendingTips": ["tip 1", "tip 2"]
+     }
+   ],
+   "overallTips": ["image-specific tip referencing actual elements in this artwork"],
+    "difficultyLevel": "beginner" | "intermediate" | "advanced"${options?.colorsOnly ? "" : `,
+    "coloringPlan": {
+      "steps": [
+        {
+          "stepNumber": 1,
+          "action": "apply darkest shadows" | "add mid-tones while wet" | "add highlights while wet" | "let dry" | "blend with colorless blender" | "detail work",
+          "region": "name of the region this applies to",
+          "colors": ["E35"],
+          "waitAfter": null,
+          "notes": "start with darkest shadow color, working in the deepest crevices first"
+        },
+        {
+          "stepNumber": 2,
+          "action": "add mid-tones while wet",
+          "region": "same region",
+          "colors": ["E21"],
+          "waitAfter": null,
+          "notes": "apply mid-tone while shadows are still wet to blend seamlessly"
+        },
+        {
+          "stepNumber": 3,
+          "action": "add highlights while wet",
+          "region": "same region",
+          "colors": ["E00"],
+          "waitAfter": "let dry 1-2 minutes",
+          "notes": "finish with lightest color, pushing it into the wet mid-tones"
+        }
       ],
-      "blendingTips": ["tip 1", "tip 2"]
-    }
-  ],
-  "overallTips": ["image-specific tip referencing actual elements in this artwork"],
-  "difficultyLevel": "beginner" | "intermediate" | "advanced",
-  "coloringPlan": {
-    "steps": [
-      {
-        "stepNumber": 1,
-        "action": "apply darkest shadows" | "add mid-tones while wet" | "add highlights while wet" | "let dry" | "blend with colorless blender" | "detail work",
-        "region": "name of the region this applies to",
-        "colors": ["E35"],
-        "waitAfter": null,
-        "notes": "start with darkest shadow color, working in the deepest crevices first"
-      },
-      {
-        "stepNumber": 2,
-        "action": "add mid-tones while wet",
-        "region": "same region",
-        "colors": ["E21"],
-        "waitAfter": null,
-        "notes": "apply mid-tone while shadows are still wet to blend seamlessly"
-      },
-      {
-        "stepNumber": 3,
-        "action": "add highlights while wet",
-        "region": "same region",
-        "colors": ["E00"],
-        "waitAfter": "let dry 1-2 minutes",
-        "notes": "finish with lightest color, pushing it into the wet mid-tones"
-      }
-    ],
-    "estimatedTime": "45-60 minutes",
-    "materialsList": ["E35", "E21", "E00"]
-  }
-}
-
-only respond with the JSON object, no additional text.`);
+      "estimatedTime": "45-60 minutes",
+      "materialsList": ["E35", "E21", "E00"]
+    }`}${options?.shoppingList ? `,
+    "shoppingList": {
+      "conversationalIntro": "a conversational message about the colors needed, recommendations for buying extra for blending comfort, and tips on skipping intermediate shades to save money",
+      "bySection": [
+        {
+          "sectionName": "section name (e.g., 'face and skin tones')",
+          "colorFamilies": ["family names present in this section"],
+          "colors": [
+            {
+              "code": "E35",
+              "name": "Mahogany",
+              "family": "Earth",
+              "hexPreview": "#hex color approximation",
+              "reason": "why this color is needed for this section",
+              "buyExtra": true,
+              "note": "optional note about progressions or savings (e.g., 'skip E34, go straight from E35 to E37 to save money')"
+            }
+          ],
+          "notes": "practical tips specific to this section"
+        }
+      ],
+      "moneyTips": ["suggestion about smart color progressions", "recommendation about color families to prioritize"]
+    }` : ""}
+   }
+  
+  only respond with the JSON object, no additional text.`);
 
   return parts.join("");
-}
+  }
 
 // Types for analysis results
 export interface CopicColorResult {
@@ -259,11 +308,35 @@ export interface ColoringPlan {
   materialsList: string[]; // all unique copic codes needed
 }
 
+export interface ShoppingListColor {
+  code: string;
+  name: string;
+  family: string;
+  hexPreview: string;
+  reason: string;
+  buyExtra: boolean;
+  note?: string;
+}
+
+export interface ShoppingListSection {
+  sectionName: string;
+  colorFamilies: string[];
+  colors: ShoppingListColor[];
+  notes: string;
+}
+
+export interface ShoppingList {
+  conversationalIntro: string;
+  bySection: ShoppingListSection[];
+  moneyTips: string[];
+}
+
 export interface AnalysisResult {
   regions: AnalysisRegion[];
   overallTips: string[];
   difficultyLevel: "beginner" | "intermediate" | "advanced";
-  coloringPlan: ColoringPlan;
+  coloringPlan?: ColoringPlan;
+  shoppingList?: ShoppingList;
 }
 
 export interface ValidationResult {

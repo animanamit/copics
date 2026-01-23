@@ -28,10 +28,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { analysisId, options, rerun } = body as {
+    const { analysisId, options, rerun, imageUrl: bodyImageUrl } = body as {
       analysisId: string;
       options?: AnalysisOptions;
       rerun?: boolean;
+      imageUrl?: string;
     };
 
     if (!analysisId) {
@@ -68,9 +69,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!analysis.imageUrl) {
+    const imageUrl = analysis.imageUrl || bodyImageUrl;
+    if (!imageUrl) {
       return NextResponse.json(
-        { error: "Image URL not found in analysis record" },
+        { error: "Image URL not found in analysis record or request body" },
         { status: 400 }
       );
     }
@@ -95,7 +97,7 @@ export async function POST(request: NextRequest) {
             content: [
               {
                 type: "image",
-                image: analysis.imageUrl,
+                image: imageUrl,
               },
               {
                 type: "text",
@@ -104,14 +106,17 @@ export async function POST(request: NextRequest) {
             ],
           },
         ],
-        maxOutputTokens: 4096,
+        maxOutputTokens: 8192,
       });
 
       // Parse the JSON response
       let result: AnalysisResult;
       try {
         let cleanedText = text.trim();
-        if (cleanedText.startsWith("```json")) {
+        // Remove markdown code blocks
+        if (cleanedText.startsWith("```json\n")) {
+          cleanedText = cleanedText.slice(8);
+        } else if (cleanedText.startsWith("```json")) {
           cleanedText = cleanedText.slice(7);
         }
         if (cleanedText.startsWith("```")) {
@@ -123,14 +128,20 @@ export async function POST(request: NextRequest) {
         cleanedText = cleanedText.trim();
 
         result = JSON.parse(cleanedText);
-      } catch {
-        console.error("failed to parse AI response:", text);
+      } catch (parseError) {
+        const errorMsg = parseError instanceof Error ? parseError.message : String(parseError);
+        console.error("failed to parse AI response:", {
+          error: errorMsg,
+          textLength: text.length,
+          firstChars: text.slice(0, 100),
+          lastChars: text.slice(-100),
+        });
         await fetchAuthMutation(api.analyses.updateStatus, {
           id: analysisId as Id<"analyses">,
           status: "failed",
         });
         return NextResponse.json(
-          { error: "failed to parse analysis result" },
+          { error: "failed to parse analysis result", details: errorMsg },
           { status: 500 }
         );
       }
@@ -141,6 +152,22 @@ export async function POST(request: NextRequest) {
           ...step,
           waitAfter: step.waitAfter ?? undefined,
         }));
+      }
+
+      // Sanitize shopping list
+      if (result.shoppingList) {
+        result.shoppingList = {
+          ...result.shoppingList,
+          moneyTips: result.shoppingList.moneyTips ?? [],
+          bySection: result.shoppingList.bySection.map((section) => ({
+            ...section,
+            notes: section.notes ?? "",
+            colors: section.colors.map((color) => ({
+              ...color,
+              note: color.note ?? undefined,
+            })),
+          })),
+        };
       }
 
       // Validate and correct Copic color codes
@@ -156,16 +183,20 @@ export async function POST(request: NextRequest) {
       const finalResult = validation.correctedResult || result;
 
       // Update with completed status, result, and options used
+      const optionsToStore = options ? {
+        ignoreBackground: options.ignoreBackground,
+        simplifiedAnalysis: options.simplifiedAnalysis,
+        skillLevel: options.skillLevel,
+        customInstructions: options.customInstructions,
+        colorsOnly: options.colorsOnly,
+        shoppingList: options.shoppingList,
+      } : undefined;
+
       await fetchAuthMutation(api.analyses.updateStatus, {
         id: analysisId as Id<"analyses">,
         status: "completed",
         result: finalResult,
-        options: options ? {
-          ignoreBackground: options.ignoreBackground,
-          simplifiedAnalysis: options.simplifiedAnalysis,
-          skillLevel: options.skillLevel,
-          customInstructions: options.customInstructions,
-        } : undefined,
+        options: optionsToStore,
       });
 
       return NextResponse.json({

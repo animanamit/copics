@@ -23,6 +23,24 @@ export const create = mutation({
   },
 });
 
+// Create a batch analysis record (for multiple images)
+export const createBatch = mutation({
+  args: {
+    userId: v.string(),
+    name: v.string(),
+    fileCount: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const analysisId = await ctx.db.insert("analyses", {
+      userId: args.userId,
+      imageName: `${args.name} (batch of ${args.fileCount})`,
+      name: args.name,
+      status: "pending",
+    });
+    return analysisId;
+  },
+});
+
 // Get a single analysis by ID
 export const get = query({
   args: { id: v.id("analyses") },
@@ -154,6 +172,30 @@ export const updateStatus = mutation({
             materialsList: v.array(v.string()),
           })
         ),
+        shoppingList: v.optional(
+          v.object({
+            conversationalIntro: v.string(),
+            bySection: v.array(
+              v.object({
+                sectionName: v.string(),
+                colorFamilies: v.array(v.string()),
+                colors: v.array(
+                  v.object({
+                    code: v.string(),
+                    name: v.string(),
+                    family: v.string(),
+                    hexPreview: v.string(),
+                    reason: v.string(),
+                    buyExtra: v.boolean(),
+                    note: v.optional(v.string()),
+                  })
+                ),
+                notes: v.string(),
+              })
+            ),
+            moneyTips: v.array(v.string()),
+          })
+        ),
       })
     ),
     options: v.optional(
@@ -169,6 +211,8 @@ export const updateStatus = mutation({
           )
         ),
         customInstructions: v.optional(v.string()),
+        colorsOnly: v.optional(v.boolean()),
+        shoppingList: v.optional(v.boolean()),
       })
     ),
   },

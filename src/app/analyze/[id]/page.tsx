@@ -739,6 +739,7 @@ export default function AnalyzePage() {
               imageUrl={analysis.imageUrl}
               imageName={analysis.name || analysis.imageName}
               result={analysis.result}
+              options={analysis.options}
             />
           </div>
         ) : (

@@ -26,6 +26,8 @@ export default defineSchema({
           )
         ),
         customInstructions: v.optional(v.string()),
+        colorsOnly: v.optional(v.boolean()),
+        shoppingList: v.optional(v.boolean()),
       })
     ),
 
@@ -81,6 +83,30 @@ export default defineSchema({
             ),
             estimatedTime: v.string(),
             materialsList: v.array(v.string()),
+          })
+        ),
+        shoppingList: v.optional(
+          v.object({
+            conversationalIntro: v.string(),
+            bySection: v.array(
+              v.object({
+                sectionName: v.string(),
+                colorFamilies: v.array(v.string()),
+                colors: v.array(
+                  v.object({
+                    code: v.string(),
+                    name: v.string(),
+                    family: v.string(),
+                    hexPreview: v.string(),
+                    reason: v.string(),
+                    buyExtra: v.boolean(),
+                    note: v.optional(v.string()),
+                  })
+                ),
+                notes: v.string(),
+              })
+            ),
+            moneyTips: v.array(v.string()),
           })
         ),
       })

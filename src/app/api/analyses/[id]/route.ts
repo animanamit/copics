@@ -41,11 +41,13 @@ export async function GET(
       result: analysis.result,
       options: analysis.options,
       createdAt: analysis._creationTime,
+      updatedAt: analysis._creationTime,
     });
   } catch (error) {
-    console.error("get analysis error:", error);
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error("get analysis error:", errorMsg, error);
     return NextResponse.json(
-      { error: "failed to get analysis" },
+      { error: "failed to get analysis", details: errorMsg },
       { status: 500 }
     );
   }

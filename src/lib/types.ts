@@ -32,11 +32,26 @@ export interface ColoringPlan {
   materialsList: string[];
 }
 
+export interface ShoppingListSection {
+  sectionName: string;
+  colorFamilies: string[];
+  colors: Array<CopicColor & { reason: string; buyExtra: boolean; note?: string }>;
+  notes: string;
+}
+
+export interface ShoppingList {
+  conversationalIntro: string;
+  sections: ShoppingListSection[];
+  moneyTips: string[];
+  totalColors?: number;
+}
+
 export interface AnalysisResult {
   regions: AnalysisRegion[];
   overallTips: string[];
   difficultyLevel: "beginner" | "intermediate" | "advanced";
   coloringPlan?: ColoringPlan;
+  shoppingList?: ShoppingList;
 }
 
 export interface Analysis {
