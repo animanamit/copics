@@ -45,7 +45,6 @@ export async function POST(request: NextRequest) {
     // Get the analysis record
     const analysis = await fetchAuthQuery(api.analyses.getByIdForUser, {
       id: analysisId as Id<"analyses">,
-      userId: user._id,
     });
 
     if (!analysis) {

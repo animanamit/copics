@@ -22,7 +22,6 @@ export async function GET(
 
     const analysis = await fetchAuthQuery(api.analyses.getByIdForUser, {
       id: analysisId as Id<"analyses">,
-      userId: user._id,
     });
 
     if (!analysis) {
@@ -70,7 +69,6 @@ export async function DELETE(
     // First, fetch the analysis to get the imageUrl
     const analysis = await fetchAuthQuery(api.analyses.getByIdForUser, {
       id: analysisId as Id<"analyses">,
-      userId: user._id,
     });
 
     if (!analysis) {
@@ -99,7 +97,6 @@ export async function DELETE(
     // Step 2: Only delete the database record after S3 deletion succeeds
     await fetchAuthMutation(api.analyses.remove, {
       id: analysisId as Id<"analyses">,
-      userId: user._id,
     });
 
     return NextResponse.json({ success: true });
@@ -131,7 +128,6 @@ export async function PATCH(
     if (name !== undefined) {
       await fetchAuthMutation(api.analyses.updateName, {
         id: analysisId as Id<"analyses">,
-        userId: user._id,
         name,
       });
     }

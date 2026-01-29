@@ -32,7 +32,6 @@ export async function POST(request: NextRequest) {
 
     // Create a single analysis record for all images
     const batchId = await fetchAuthMutation(api.analyses.createBatch, {
-      userId: user._id,
       name: analysisName,
       fileCount: files.length,
     });
