@@ -1,20 +1,28 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { authComponent } from "./auth";
+import type { GenericCtx } from "@convex-dev/better-auth";
+import type { DataModel } from "./_generated/dataModel";
+
+// Get the authenticated user's ID from the session context, or throw
+async function getAuthUserId(ctx: GenericCtx<DataModel>): Promise<string> {
+  const user = await authComponent.getAuthUser(ctx);
+  if (!user) throw new Error("Unauthorized");
+  return user._id;
+}
 
 // Create a new analysis record
 export const create = mutation({
   args: {
-    userId: v.string(),
     imageName: v.string(),
-    imageStorageId: v.optional(v.id("_storage")),
     imageUrl: v.optional(v.string()),
     name: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
     const analysisId = await ctx.db.insert("analyses", {
-      userId: args.userId,
+      userId,
       imageName: args.imageName,
-      imageStorageId: args.imageStorageId,
       imageUrl: args.imageUrl,
       name: args.name,
       status: "pending",
@@ -26,13 +34,13 @@ export const create = mutation({
 // Create a batch analysis record (for multiple images)
 export const createBatch = mutation({
   args: {
-    userId: v.string(),
     name: v.string(),
     fileCount: v.number(),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
     const analysisId = await ctx.db.insert("analyses", {
-      userId: args.userId,
+      userId,
       imageName: `${args.name} (batch of ${args.fileCount})`,
       name: args.name,
       status: "pending",
@@ -41,79 +49,33 @@ export const createBatch = mutation({
   },
 });
 
-// Get a single analysis by ID
-export const get = query({
-  args: { id: v.id("analyses") },
-  handler: async (ctx, args) => {
-    const analysis = await ctx.db.get(args.id);
-    if (!analysis) return null;
-
-    // If we have a storage ID, get the URL
-    let imageUrl = analysis.imageUrl;
-    if (analysis.imageStorageId) {
-      imageUrl = await ctx.storage.getUrl(analysis.imageStorageId) || undefined;
-    }
-
-    return {
-      ...analysis,
-      imageUrl,
-    };
-  },
-});
-
-// Get analysis by ID with user check
+// Get analysis by ID for the authenticated user
 export const getByIdForUser = query({
   args: {
     id: v.id("analyses"),
-    userId: v.string(),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
     const analysis = await ctx.db.get(args.id);
-    if (!analysis || analysis.userId !== args.userId) return null;
-
-    // If we have a storage ID, get the URL
-    let imageUrl = analysis.imageUrl;
-    if (analysis.imageStorageId) {
-      imageUrl = await ctx.storage.getUrl(analysis.imageStorageId) || undefined;
-    }
-
-    return {
-      ...analysis,
-      imageUrl,
-    };
+    if (!analysis || analysis.userId !== userId) return null;
+    return analysis;
   },
 });
 
-// List analyses for a user
+// List analyses for the authenticated user
 export const listForUser = query({
   args: {
-    userId: v.string(),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
     const limit = args.limit ?? 20;
 
-    const analyses = await ctx.db
+    return await ctx.db
       .query("analyses")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .withIndex("by_user", (q) => q.eq("userId", userId))
       .order("desc")
       .take(limit);
-
-    // Get URLs for all analyses with storage IDs
-    const analysesWithUrls = await Promise.all(
-      analyses.map(async (analysis) => {
-        let imageUrl = analysis.imageUrl;
-        if (analysis.imageStorageId) {
-          imageUrl = await ctx.storage.getUrl(analysis.imageStorageId) || undefined;
-        }
-        return {
-          ...analysis,
-          imageUrl,
-        };
-      })
-    );
-
-    return analysesWithUrls;
   },
 });
 
@@ -217,7 +179,13 @@ export const updateStatus = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
     const { id, status, result, options } = args;
+
+    const analysis = await ctx.db.get(id);
+    if (!analysis || analysis.userId !== userId) {
+      throw new Error("Analysis not found or unauthorized");
+    }
 
     const updateData: {
       status: typeof status;
@@ -241,13 +209,13 @@ export const updateStatus = mutation({
 export const updateName = mutation({
   args: {
     id: v.id("analyses"),
-    userId: v.string(),
     name: v.string(),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
     const analysis = await ctx.db.get(args.id);
 
-    if (!analysis || analysis.userId !== args.userId) {
+    if (!analysis || analysis.userId !== userId) {
       throw new Error("Analysis not found or unauthorized");
     }
 
@@ -259,28 +227,16 @@ export const updateName = mutation({
 export const remove = mutation({
   args: {
     id: v.id("analyses"),
-    userId: v.string(),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
     const analysis = await ctx.db.get(args.id);
 
-    if (!analysis || analysis.userId !== args.userId) {
+    if (!analysis || analysis.userId !== userId) {
       throw new Error("Analysis not found or unauthorized");
-    }
-
-    // Delete the stored image if it exists
-    if (analysis.imageStorageId) {
-      await ctx.storage.delete(analysis.imageStorageId);
     }
 
     await ctx.db.delete(args.id);
     return { success: true };
-  },
-});
-
-// Generate upload URL for image
-export const generateUploadUrl = mutation({
-  handler: async (ctx) => {
-    return await ctx.storage.generateUploadUrl();
   },
 });

@@ -36,7 +36,6 @@ export async function POST(request: NextRequest) {
 
     // Create analysis record in Convex with pending status
     const analysisId = await fetchAuthMutation(api.analyses.create, {
-      userId: user._id,
       imageName: filename,
       imageUrl,
       name: name || filename.replace(/\.[^/.]+$/, ""),

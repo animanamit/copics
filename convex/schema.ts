@@ -3,11 +3,9 @@ import { v } from "convex/values";
 
 export default defineSchema({
   analyses: defineTable({
-    // User identification (from Clerk)
     userId: v.string(),
 
-    // Image data
-    imageStorageId: v.optional(v.id("_storage")),
+    // Image data (stored in S3)
     imageUrl: v.optional(v.string()),
     imageName: v.string(),
     name: v.optional(v.string()), // User-provided name for the analysis
